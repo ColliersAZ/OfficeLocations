@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phoenix Metro Office Options</title>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.24.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.24.0/mapbox-gl.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-colliers-blue: #25408F;
+    --c-dark-blue: #000759;
+    --c-medium-blue: #1C54F4;
+    --c-light-blue: #4D93FF;
+    --c-pale-blue: #C3E6FF;
+    --c-yellow: #FFD400;
+    --c-deep-blue-grey: #353E59;
+    --c-dark-blue-grey: #56648F;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Open Sans",Verdana,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 28px; height:60px; background:var(--c-colliers-blue);
+    border-bottom:4px solid var(--c-yellow); flex-shrink:0; z-index:200;
+  }
+  .header-left { display:flex; align-items:center; gap:18px; }
+  .colliers-logo { height:34px; width:auto; }
+  .header-divider { width:1px; height:26px; background:rgba(255,255,255,0.3); }
+  .header-title { font-size:14px; font-weight:600; letter-spacing:0.04em; color:#fff; text-transform:uppercase; }
+  .header-right { display:flex; align-items:center; gap:12px; }
+  .header-date { font-size:11px; color:rgba(255,255,255,0.6); letter-spacing:0.06em; text-transform:uppercase; }
+
+  .filter-bar {
+    display:flex; align-items:center; gap:7px; padding:9px 28px; background:#fff;
+    border-bottom:1px solid #dde4f0; flex-shrink:0; z-index:200; flex-wrap:wrap;
+  }
+  .filter-label { font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--c-dark-blue-grey); margin-right:4px; }
+  .filter-btn {
+    display:flex; align-items:center; gap:6px; padding:5px 13px; border-radius:3px;
+    border:1.5px solid #dde4f0; font-family:"Open Sans",sans-serif; font-size:11.5px;
+    font-weight:600; cursor:pointer; transition:all 0.16s; background:#f0f4fb; color:var(--c-dark-blue-grey);
+  }
+  .filter-btn:hover { background:var(--c-pale-blue); border-color:var(--c-light-blue); color:var(--c-colliers-blue); }
+  .filter-btn.active { color:#fff !important; border-color:transparent !important; }
+  .filter-btn .dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .filter-btn .cnt { font-size:10px; opacity:0.7; font-weight:400; }
+
+  #map { flex:1; width:100%; position:relative; }
+
+  #legend {
+    position:absolute; bottom:32px; left:28px; z-index:100;
+    background:rgba(255,255,255,0.95); border:1px solid #dde4f0;
+    border-left:3px solid var(--c-colliers-blue); border-radius:4px;
+    padding:13px 17px; min-width:172px; box-shadow:0 2px 14px rgba(0,7,89,0.13);
+  }
+  .legend-title { font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--c-colliers-blue); margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid #dde4f0; }
+  .legend-item { display:flex; align-items:center; gap:9px; margin-bottom:7px; font-size:12px; color:var(--c-deep-blue-grey); }
+  .legend-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; border:2px solid rgba(0,0,0,0.08); }
+  .legend-cnt { margin-left:auto; font-size:10px; color:var(--c-dark-blue-grey); opacity:0.7; }
+
+  .marker-pin {
+    width:36px; height:36px; border-radius:50%; border:3px solid rgba(255,255,255,0.95);
+    display:flex; align-items:center; justify-content:center;
+    font-family:"Open Sans",sans-serif; font-size:13px; font-weight:700; color:#fff;
+    box-shadow:0 3px 14px rgba(0,0,0,0.35); cursor:pointer;
+    transition:box-shadow 0.15s; user-select:none;
+  }
+  .marker-pin:hover { box-shadow:0 5px 20px rgba(0,0,0,0.5); }
+
+  .mapboxgl-popup { z-index:150; pointer-events:auto; max-width:calc(100vw - 32px) !important; }
+  .mapboxgl-popup-content { animation: popupFadeIn 0.14s ease-out; }
+  @keyframes popupFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .mapboxgl-popup-content {
+    padding:0 !important; border-radius:5px !important; overflow:hidden;
+    box-shadow:0 6px 28px rgba(0,7,89,0.25) !important;
+    width:min(390px, calc(100vw - 32px)); max-width:calc(100vw - 32px); max-height:calc(100vh - 150px); overflow-y:auto; font-family:"Open Sans",sans-serif;
+  }
+  .mapboxgl-popup-tip { display:none !important; }
+  .mapboxgl-popup-close-button { color:rgba(255,255,255,0.85) !important; font-size:18px !important; padding:6px 10px !important; z-index:10; line-height:1; }
+  .popup-hdr { padding:13px 17px 11px; }
+  .popup-num-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+  .popup-num { font-size:10px; font-weight:700; letter-spacing:0.1em; color:rgba(255,255,255,0.75); }
+  .popup-tag { font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:2px 7px; border-radius:2px; background:rgba(255,255,255,0.2); color:#fff; }
+  .popup-name { font-size:15px; font-weight:700; color:#fff; line-height:1.25; }
+  .popup-addr { font-size:11px; color:rgba(255,255,255,0.72); margin-top:3px; }
+
+  .popup-photo-wrap {
+    background:#fff;
+    padding:10px 10px 0;
+  }
+  .popup-photo {
+    width:100%;
+    aspect-ratio: 16 / 9;
+    display:block;
+    object-fit:cover;
+    border-radius:5px;
+    background:#eef2f7;
+    box-shadow:0 1px 6px rgba(0,7,89,0.12);
+  }
+  .popup-photo-caption {
+    font-size:8.5px;
+    color:#56648F;
+    opacity:0.7;
+    margin-top:4px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+  }
+
+  .popup-body { padding:11px 17px 13px; display:grid; grid-template-columns:1fr 1fr; gap:8px 15px; background:#fff; }
+  .pf-label { font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#56648F; opacity:0.75; margin-bottom:2px; }
+  .pf-val { font-size:12px; color:#000759; line-height:1.3; }
+  .pf-full { grid-column:1/-1; }
+  .popup-comment { grid-column:1/-1; background:#f5f7fc; border-left:3px solid #25408F; padding:6px 10px; border-radius:0 3px 3px 0; font-size:11px; color:#56648F; font-style:italic; margin-top:2px; }
+
+  .mapboxgl-ctrl-group { box-shadow:0 1px 6px rgba(0,7,89,0.15) !important; border-radius:3px !important; }
+  .mapboxgl-ctrl-attrib { display:none !important; }
+
+  #basemap-toggle { position:absolute; bottom:90px; right:28px; z-index:100; display:flex; gap:8px; }
+  .bm-btn { display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; border:none; background:none; padding:0; }
+  .bm-thumb { width:56px; height:56px; border-radius:6px; border:3px solid #fff; box-shadow:0 2px 10px rgba(0,0,0,0.3); transition:border-color 0.18s,box-shadow 0.18s; background-size:cover; background-position:center; }
+  .bm-btn.active .bm-thumb { border-color:#25408F; box-shadow:0 0 0 2px #25408F,0 2px 10px rgba(0,0,0,0.3); }
+  .bm-label { font-family:"Open Sans",sans-serif; font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.7); white-space:nowrap; }
+  .bm-thumb-standard  { background-image:url("https://api.mapbox.com/styles/v1/mapbox/standard/static/-112.073,33.448,12,0/56x56?access_token=pk.eyJ1Ijoibmljbzg0NjUxIiwiYSI6ImNrYjFkd25seDBjbTIycXJvamxhN3dmYjgifQ.zIoWNRz8c-hZr8g9R3WUkw"); }
+  .bm-thumb-satellite { background-image:url("https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/-112.073,33.448,13,0/56x56?access_token=pk.eyJ1Ijoibmljbzg0NjUxIiwiYSI6ImNrYjFkd25seDBjbTIycXJvamxhN3dmYjgifQ.zIoWNRz8c-hZr8g9R3WUkw"); }
+
+  #pitch-hint { position:absolute; bottom:32px; right:28px; z-index:100; background:rgba(255,255,255,0.92); border:1px solid #dde4f0; border-radius:4px; padding:8px 13px; font-size:11px; color:var(--c-dark-blue-grey); box-shadow:0 2px 10px rgba(0,7,89,0.1); }
+
+  #light-toggle {
+    position:absolute; top:16px; left:50%; transform:translateX(-50%); z-index:100;
+    display:flex; align-items:center;
+    background:rgba(26,26,26,0.82); backdrop-filter:blur(8px);
+    border-radius:22px; padding:4px 5px; gap:2px;
+    box-shadow:0 2px 12px rgba(0,0,0,0.35);
+  }
+  .lbtn {
+    padding:6px 18px; border-radius:18px; border:none;
+    font-family:"Open Sans",sans-serif; font-size:13px; font-weight:500;
+    cursor:pointer; transition:all 0.18s; background:transparent;
+    color:rgba(255,255,255,0.65); white-space:nowrap;
+  }
+  .lbtn:hover { color:#fff; }
+  .lbtn.active { background:rgba(255,255,255,0.18); color:#fff; font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <img src="data:image/webp;base64,UklGRpoPAABXRUJQVlA4TI0PAAAvDUEmEO8HrbZtVcu68r4Pd2tBBbLTwiEA//2sjYWQXNu2akXr4K5thxZERJKEQxjuVW+v7TiSbVWZ911x8s+EtcOaPNzuMG7bRhKTzD3z2v57XSFBUk14I/UHCkigAxuYwAMmMIABdGACAzhAAAv4gA1MYAMXeMABAihgAAvowAAGEEADAhhAAQMIYAAFBDCADrSUFpVKpUqlikhlFBRhZYIqhcooDYqoVKpUFUVVVAkqE1RGqSpSpTJSpCFKZWRlVIZEKlUl1KJKSJUilcpIg5FKpYpSRamsjFKpKAJMqEgVpUplpEpllKrUnyCFCRVVQlRFtYQ/WyWk+hv5hwmioAgAUQRQBP3rKUApUlD9R4ACEFZfS5iro/VmYf+4dnF/sKzndvZ6T3fJR76Od6d2Ht4aaJMMctvTWVPZnMbhTM0pnK0sba03NpbG4cwsU9iZzmY6/UeLFZZCO/0r/tbc3LMWUCAgYGFh8nf5f2VMZmmJj9ykMMmtp7K5Xzn4mtueznoq1/+2vvi7edr4ep5qyb2cXb2fFJ5vpwSiVzBWEnvXN5K+nizbvc0k73tP8+KibySrg8rV40dHHAVpGzCtf907EiIiSTePJNrWjr05sW3bSW3btjmzO+zItm0ztmrbiFPbeCc/6r5vHdH/CfC3//+btP//3c+PCihPi7uu7lafdriffdlip/bZ6Z4dKgrWgWjuRBMgBENCNj2FeTwSCL58j78i+j8BQk8jKyfPgCDZDg70crYxFp/QxME/ElkPcjb7GAP7EKQ+wtlYLxNPpD/AQg/TALRWaNq1T7++ct2vV8cG0RqEW+swCUSzzqAZG/fE7pPt2F3LJ/YsDxBhqcXQE83eC2I3LF8q4yu3xE1pARBiouEAEDMqbt1Sed+6vhuAuxDCJFxjeNxSqV+3rSOAlRCOAN1il8vd0o3z6wCewigQqDp741LJX7JvHBBpZg3QO3ap9K9c1QBwdAaiJ2yVv6WxAwFPb6DmgtUKYNt4IDgYaLZpuQLYOLUsRIQBbbcvVYDrZlWCyFCFUBn477//B3EuSKpuWqahyiJXS5dGjvHAl9TrF68Y/P7P+dlX0Vcz3zb3Uop5ee5Iq6q/0kVl610s54q3TuY/p69ZBSu5PHErDPRQ19C7Ld7KYxq/fj1j/ZPRir+eNcBrk8YW7JPPPRD8nbtO5Y3d5+3gvf7W64RhbwHE8z7hZCs597AeAN5Q8oa087ITAJp/Z69PrPl7ohGIXUPP375/PTnY4QCA8MThNNTvFPxwrlip9fF2IL53CIac+HA/AM7I4fUpW/raAs7Q2I+UajmVk+/jYQdAuAlgo+gD9nR1ogvoswYin/jwqAmorcf8NYkppMeAOBizZQ7JvGzHxwjOOdUH+idw/VHH80w/uG1LXpOYQvIBEF/JErov2CttlLeWD4qr7a4+65jODje66TjhaJmSqWauLeLJHSDOljn0bCVukSZNH6BwsjlcR/uqIrJC/N8eWleKwsjHc2/njmXmesKLA0CcKrPonZFP7hCGSn5AXinPBSjfVERk8/bpIKWTJv/oAoCu78r1xPgPEO/keawkIx3edNwWWD8gsn9G3SFiMREm9ZxdEIT9CDgj+8J1RFsBYuCXgpVl1F8hAOg44fyB6jJlsURC5T6pF0nGKyBPm9eQ7EknadjGipffAEA4IfhE+uVNf+ZFe0Z5ol1D7BdAbPglVY7L3gKo+yX5pLBT78kYJ/WxJHOCMmFeP4REmHT3kq0cqmt1AEuKT8RYkLRMMydJt7LnhOIGZUO+fthTQH5nYRXT8gOAGcMv8UbSmkyxXnhB+QVhSsZrR+a4hdSwXagGqksA/5g+ERJhT/a0p4vi/ED/wLx0cf1Q54DcdcpVhTvrgAHNJ9mDv7y98oRppcgXFRavH9oTyqCC1VXfPlwU/XJ4w5P5lnT3kqUg4jn+l/UJn2ylPLerhNlLmfHLUYS0WaS9q0gt86LAXlXST6DO6tVKs+iRLWiWppR0qyR4yRy3kr7TjJnKsJJRYr1wkm7pJUW1FK4CBV0mSGpyd78gMhSuaOolRbfU/JWgf6AtlKrlldeF2Nep4aHHI9HFhKKwVdL/rUTeFLemxpKcK8E8/fV5auTx0LMXKymN9SDpO5PTAuKFsT3SHgwPxguECx03X488Hhp+MbdXlK8Aa5K2JvtKTX2+GwBqeGhNknyW0UqJ2bsNEDzIutEPot1A7/4i5VywsrI1HIJIkssUXwfB2X/GITJS9nMfUBsH1yW25pS/aet+4oyVXnDWhRwAMBAzfMTK5vH8UBgAoC3J0871uVYAgGBnhwPgGQqkc1XaHGoAgFBcksaBuiYjU4rdAwAIhuuA+EKqNTZ/pxZyhSlwds1sxX+MEOCvecs3LG6OtwK5M8VRWG0aACAY3UulfvY7YEjkEJGRcisPgPzzzxTQv2mM8isCALfndn9vR5scN475Grs476MtKb7J5J6B82GyLOXl8kLIAXWfbL9oH8Fllwv7DQBAaK1c4Dj7d6sDogYiXn6/DfT1VaAHYmLusB0AnuZtMSeVt9oAoH77stawl/ZJ8wurjIKz90RCZ3m+zgH1SwbjD2UhUglttd7xroyIyJRfEwI7EqIVBZf/dEF9RxMhqqAxCQA3DiR0Gts3AOCbdnVELb+Ys+Bs+K4xBCyPE6B579IfmDua6/YkHLYBAHSzvAMLOw0OeKYhsjjXTauDW7/OEi97I72z0jl/FAGAezISGWsjCPCPVWNs7hbtqeaTwm4T4W8dqeJ+MwEeSqw/MFs+6ib1IkkfBecrG4l8so0QiucRz83TEQp0HBlcXsejM5VFeR0A4I7EEhDtuXq4W0zXFhYf0fozrD+0Z0BcUmloj5NgWfUJMuX3Hi63A46G3bJC1NRuAnzQERFF4RZlpswgIpfhEFH/4GjcsSlov+mcEbHGzDFaY0LwRSEWIDQfZF3Im5R7l6xPUFnxYE6AM7K0tkqeCpKeaQ4svyEFYgV0ab12QH+sLPMENpuUsebe0WCx5AvrJRBvi6wLPtlCatgp+GbVHZfqJFSyP8s6Souk9iTvxpghQOPYxommi2lElseakzdcjNl+YLO3SE81dCvdJ8F7ozYK2/UVeyAQ5DVS9xnnRl4jAUDns897UonF6n4h2YNmWvsJ7wMh0UiaNF1ZY5RhvTZKi0C8v7nqdf03j4T1ivDJVhoAND5aEi+Z2kP5IQ2WVB9IP4ActVyZLyn3CmxNGB9Jw38Ur3IWq4HGW1cA8DBeYmrPnHHxqOQDZZky7eE15Va2Nsz3pKcaVrpSnPC3B2jdKjE1l4+HaA2/5Jp5VWtvSQOKz1DAEQ/QEi/UHKpDNHiksFWTNyhRDy8o96V0TRizpH6O9Rlmlfk+dzAgpWtO3nABCzZTBVYVGbzcqic9t11ZY5QxA2tC+0pqSgh+Q1ZjFv5udlO/Vag5VnrgovXgsnJc4c2WzGQPmkkjuiv5EeWLVhvyGgm+Gv5iCwKDnKrsLwxHKDBr1BwWfzbQ4EEuVynOjkJkR2TFO6T7UtrFxVk3KRTP14YYC5Duy6wHPlsdbichICLmVP3gbYQ0ZdYeWpMuYFgSKiOWXgKEYyJa06TWJO9C3A2ShkrobsM3F2fdpLoVk3GVSR7ITBWUqcBtgUNirhzvJUxeBZmzfhfwjJMqwJrHTwECayqD4l6IULcpuzC+AHmz6GFN9nQ7TyktkXoYB5oTJOg6ltzw6lDLwmUVrAmAf20Sov0r4IhaVwAW91pcwL2EzXngVGmhE6Dui42IaE4QYNR2oQ6QHitYrVvZc8oiqStFkH7WkeD+qUwrGFMA40YV9I8ALUcChc31OebUq4BRt1pcQOQjb+VZEpsp2umVBwBQ/9FGp3DUTgjFJIq8HSBEEgUvyyVP/dwFSZ3zkC4OUODObvmSYy+ysn0wDPBXXKhCcRMAJmza5V0AaEoIVwEy6m6vC4BbHxKCbtm2pReOf7zsBQAIzdlpAqOt1TtgUOMJvDoAzvolHUnJNtK8SvtI6j6jfSG1JnkHSjshCoRf7Jxm8eDH8wgAfDSRsEHqSrkS4iGAwE+dIeROWgBgWMUrARn5+LEbgKbbw1PR6PPhuy1AvPnTRrr9ngBRW+bYc8mOAnHGQkQUxLy+30R6/0fIOoU/L0k3kkou6/zzkdS4r4oih4jWexpAw83+ngg4x1UWMSfm/6yS/jpS82KeJXGpTgC4eWBfIGLuzzQAhOPiFYFMXpq94cbz6HEJXbL6awI83UrluN0RcAb+NVhHYncvPgLkvq39g8PDw4P99RYSRPd/Hx4eHh4cPCHB2997e0kWkVXGXLgcFXlEdn83HntIgsnE3t5eiiWgdA8A4OYqp1lqMloP0LCo4VWBeG4lxhsrdHdNExg3yBpfbzigrvNWXwCc/T+sNCIKe5FQKAAuwxFnGFwGmyPOENBDodCMhoi8OOEp+LqYQeST3cFQPdADoVBoVSaZkw6A3iejgy0A0Lxg4hWCKOq7L7q9hQaWBQU9G/GRRnDbPXOqoFPcgVqM2oiIfGm+x1VgaMu6QMTMUQg8z5dI2YOnQQc58GRXx6sFsWClvr8avBmuJzV2PZ7dLZbOsYKiuvtuoCscDDa23plcTRk8Ernkm2h0+o3z7Sz98xf3s9SZN87X0Wh0O+/AtJZaHLvV0hgMNnU8mN6WJXSypzOvZj5/m59fXl6en//2efbN9F6OxOSU2Luh7uZQsLH9XnRbKeCVg8gVTfk0sb25vLCw8jOeKhkiVlo05NT+bix+LBgKh/Rzw7Ztk6jTNY861TCdlm3b+TMCIlfS+aN4LJY4kcwC0jXL0DRVVRVFVTVNN+0MQ0JE0VBOf+/G4smCeYnV/kqcnHApK6qqSHkOq8vlRDGfYfFKPc/kRVHg0+hjLieKeZ7F6n9F/0P9779/dmuXkKgAE5Iq6bifnKIAk1NP6fhw8YICvHjtvI73Vy4pwMtX9bmsAK/8ZeuSArysx503bxXgm3enddx78lQBPnl5RsfdZy8U4PPXf9O69/ihAnz0SiMMeJCepgDTM05CVAhw5PpNBXij8BxE+ADH8/Py5f9WCRDiApwtuqUAbucC3nYA+28rgFtHASfjEOB4fp70lZZEAZbCGeDAbdnLu3UU8DUUZpHAuZLbknf7AICdEMIZ4ETxbZnLu50L4G0ohDAOBDiZVVqaJ2l5twsOAkSYC03zcDQPl+SXyvjt0oKcY2jaCe1W4Rpw7FBuZmaWXGdm7z98Aq32QrdFoBZJj4rSCLcT+pq4SJxWT3PxkZZu4fIW6WUrPqGpvatfSKh0hwR4OJgLPQEA" class="colliers-logo" alt="Colliers">
+    <div class="header-divider"></div>
+    <span class="header-title">Phoenix Metro Office Options</span>
+  </div>
+  <div class="header-right">
+    <span class="header-date">As of May 12, 2026 &nbsp;·&nbsp; ~80,000 SF Requirement</span>
+  </div>
+</header>
+
+<div class="filter-bar" id="filterBar">
+  <span class="filter-label">Submarket</span>
+  <button class="filter-btn active" data-sm="all" style="background:#25408F;color:#fff;border-color:#25408F;">
+    All Markets <span class="cnt">(16)</span>
+  </button>
+</div>
+
+<div id="map">
+  <div id="legend"><div class="legend-title">Submarket</div></div>
+  <div id="light-toggle">
+    <button class="lbtn active" data-preset="day"   onclick="setLight('day')">Day</button>
+    <button class="lbtn"        data-preset="dawn"  onclick="setLight('dawn')">Dawn</button>
+    <button class="lbtn"        data-preset="dusk"  onclick="setLight('dusk')">Dusk</button>
+    <button class="lbtn"        data-preset="night" onclick="setLight('night')">Night</button>
+  </div>
+  <div id="basemap-toggle">
+    <button class="bm-btn active" id="btn-standard" onclick="setBasemap('standard')">
+      <div class="bm-thumb bm-thumb-standard"></div><span class="bm-label">Default</span>
+    </button>
+    <button class="bm-btn" id="btn-satellite" onclick="setBasemap('satellite')">
+      <div class="bm-thumb bm-thumb-satellite"></div><span class="bm-label">Satellite</span>
+    </button>
+  </div>
+  <div id="pitch-hint">Scroll to zoom &nbsp;·&nbsp; Right-drag to tilt</div>
+</div>
+
+<script>
+mapboxgl.accessToken = "pk.eyJ1Ijoibmljbzg0NjUxIiwiYSI6ImNrYjFkd25seDBjbTIycXJvamxhN3dmYjgifQ.zIoWNRz8c-hZr8g9R3WUkw";
+
+const COLORS = {
+  "Downtown":          "#25408F",
+  "Midtown":           "#1C54F4",
+  "Tempe":             "#ED1B34",
+  "Scottsdale South":  "#FA6609",
+  "Airport Area":      "#9C45AE",
+  "Mesa East":         "#2AB6A9"
+};
+
+const VIEWS = {
+  "all":              { center:[-112.010,  33.440],  zoom:10.8, pitch:0,  bearing:0   },
+  "Downtown":         { center:[-112.0728, 33.4490], zoom:15.5, pitch:55, bearing:-20 },
+  "Midtown":          { center:[-112.07433426497786, 33.48338326267164 ], zoom:15.5, pitch:55, bearing:-15 },
+  "Tempe":            { center:[-111.9390, 33.4258], zoom:13.5, pitch:50, bearing:10  },
+  "Scottsdale South": { center:[-111.9427453, 33.46647535], zoom:16.5, pitch:50, bearing:0   },
+  "Airport Area":     { center:[-112.014346, 33.412448160077], zoom:16.5, pitch:50, bearing:0   },
+  "Mesa East":        { center:[-111.875809150165, 33.4351720730946], zoom:16.5, pitch:50, bearing:0   }
+};
+
+
+const properties = [
+  { num:1,  name:"Bank of America Tower",               address:"201 E Washington St",    city:"Phoenix",    submarket:"Downtown",         rba:"612,239", leased:"62.4%", available:"40–276,146 SF",     maxContig:"97,133 SF",  rent:"$37.00 FS",        debt:"—",                              debtSF:"—",          lender:"—",                         maturity:"—",                                comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=BEXNDvi7",                                              lng:-112.070586603168,           lat:33.447713550854 },
+  { num:2,  name:"One North Central",                   address:"1 N Central Ave",        city:"Phoenix",    submarket:"Downtown",         rba:"436,433", leased:"78.8%", available:"1,320–157,983 SF",  maxContig:"129,466 SF", rent:"$35.00 FS",        debt:"$90,500,000",                    debtSF:"$207.36/SF", lender:"Prime Group",               maturity:"Est. 8/2026",                      comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=BwLvOShs",                                              lng:-112.073206702281,           lat:33.448699472215 },
+  { num:3,  name:"101 North",                           address:"101 N 1st Ave",          city:"Phoenix",    submarket:"Downtown",         rba:"355,931", leased:"46.6%", available:"1,273–189,997 SF",  maxContig:"131,406 SF", rent:"$27.50–$31.00 FS", debt:"$61,800,000",                    debtSF:"$173.63/SF", lender:"Prime Group",               maturity:"2022",                             comment:"Loan outstanding — likely short-term extension", photo:"https://ourlinks.colliers.com/Document/File?id=0mnpk8HO",  lng:-112.074720641633, lat:33.449894480151 },
+  { num:4,  name:"333 Tower",                           address:"333 N Central Ave",      city:"Phoenix",    submarket:"Downtown",         rba:"249,012", leased:"1.6%",  available:"1,500–491,480 SF",  maxContig:"244,990 SF", rent:"Withheld",         debt:"$18,000,000",                    debtSF:"$72.29/SF",  lender:"Capital Fund I (Financial)", maturity:"Est. 12/2028",                     comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=5kN7YbCw", lng:-112.073277864639,  lat:33.451730619861 },
+  { num:5,  name:"Burgbacher Bldg – Park Central",      address:"3141 N 3rd Ave",         city:"Phoenix",    submarket:"Midtown",          rba:"170,862", leased:"0%",    available:"40,000–170,862 SF", maxContig:"90,862 SF",  rent:"$29.75 +ELEC",     debt:"$18,000,000",                    debtSF:"$105.35/SF", lender:"Seller Financing",          maturity:"Est. 2028",                        comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=Ew9wAGDp", lng:-112.077049888706,  lat:33.485286437667 },
+  { num:6,  name:"Phoenix Plaza Tower I",               address:"2901 N Central Ave",     city:"Phoenix",    submarket:"Midtown",          rba:"463,277", leased:"53.4%", available:"3,659–423,456 SF",  maxContig:"423,456 SF", rent:"$33.50 FS",        debt:"$93,000,000",                    debtSF:"$103.13/SF", lender:"MetLife",                    maturity:"Est. 3/2031",                      comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=50xFK6o5", lng:-112.072988940437,   lat:33.480662728418 },
+  { num:7,  name:"Phoenix Plaza Tower II",              address:"2929 N Central Ave",     city:"Phoenix",    submarket:"Midtown",          rba:"438,528", leased:"68.5%", available:"2,684–270,219 SF",  maxContig:"195,326 SF", rent:"$33.50 FS",        debt:"$93,000,001",                    debtSF:"$103.13/SF", lender:"MetLife",                    maturity:"Est. 3/2031",                      comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=SHKZ8Rvz", lng:-112.073070663993,   lat:33.481508378629},
+  { num:8,  name:"Papago Buttes – Phase I",             address:"1500 N Priest Dr",       city:"Tempe",      submarket:"Tempe",            rba:"256,000", leased:"34.6%", available:"2,321–242,581 SF",  maxContig:"144,550 SF", rent:"$37.00 FS",        debt:"—",                              debtSF:"—",          lender:"—",                         maturity:"—",                                comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=VJl3UqJw", lng:-111.956193070838,      lat:33.444665471765 },
+  { num:9,  name:"Horizon Bay",                         address:"1337 E Rio Salado Pky",  city:"Tempe",      submarket:"Tempe",            rba:"164,331", leased:"4.0%",  available:"14,904–157,736 SF", maxContig:"120,402 SF", rent:"$44.50–$46.50 FS", debt:"$32,355,680",                    debtSF:"$196.89/SF", lender:"Western Alliance Bank",     maturity:"Est. 2/2031",                      comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=uh8rBoVk", lng:-111.91404025671805,           lat:33.42840207915203 },
+  { num:10, name:"State Farm – Bldg D",                 address:"500 E Rio Salado Pky",   city:"Tempe",      submarket:"Tempe",            rba:"376,000", leased:"100%",  available:"15,000–267,000 SF", maxContig:"210,000 SF", rent:"$33.50 MG",        debt:"Loan 1: $264M / Loan 2: $72.5M", debtSF:"—",          lender:"CMBS",                      maturity:"Loan 1: 12/2027 / Loan 2: 1/2028", comment:"Cross-collateralized. Part of 2,031,293 SF complex.", photo:"https://ourlinks.colliers.com/Document/File?id=6l74tD3c", lng:-111.93180513523917,      lat:33.42970693810291  },
+  { num:11, name:"Tempe Vale – Building 1",             address:"1325 W Rio Salado Pky",  city:"Tempe",      submarket:"Tempe",            rba:"105,947", leased:"0%",    available:"33,681–105,947 SF", maxContig:"105,947 SF", rent:"$48.00 FS",        debt:"—",                              debtSF:"—",          lender:"—",                         maturity:"—",                                comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=dl96pL48", lng:-111.96003215060642,           lat:33.42947053524097  },
+  { num:12, name:"Tempe Vale – Building 2",             address:"1295 W Rio Salado Pky",  city:"Tempe",      submarket:"Tempe",            rba:"128,456", leased:"0%",    available:"40,766–128,457 SF", maxContig:"128,457 SF", rent:"Withheld",         debt:"—",                              debtSF:"—",          lender:"—",                         maturity:"—",                                comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=CoMbYkwm", lng:-111.9590170901863,           lat:33.42988466668079 },
+  { num:13, name:"Liberty Center at Rio Salado – 1870", address:"1870 W Rio Salado Pky",  city:"Tempe",      submarket:"Tempe",            rba:"236,130", leased:"100%",  available:"39,335–236,130 SF", maxContig:"236,130 SF", rent:"$19.00 NNN",       debt:"$42,680,498",                    debtSF:"$180.75/SF", lender:"CMBS",                      maturity:"10/2028",                          comment:"Cross-collateralized. Watchlist and in cash trap.", photo:"https://ourlinks.colliers.com/Document/File?id=RD1iuitZ", lng:-111.965771406873,           lat:33.433458573853 },
+  { num:14, name:"Scottsdale Entrada",                  address:"6400 E McDowell Rd",     city:"Scottsdale", submarket:"Scottsdale South", rba:"251,592", leased:"65.0%", available:"4,189–93,437 SF",   maxContig:"83,802 SF",  rent:"$39.00–$45.00 FS", debt:"$37,500,000",                    debtSF:"$149.05/SF", lender:"UMB Bank",                  maturity:"Est. 3/2029",                      comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=hqNlODau", lng:-111.9429365069741,           lat:33.466789873366785 },
+  { num:15, name:"Apollo Corporate HQ",                 address:"4025 S Riverpoint Pky",  city:"Phoenix",    submarket:"Airport Area",     rba:"267,967", leased:"100%",  available:"26,796–267,967 SF", maxContig:"267,967 SF", rent:"Withheld",         debt:"Sold 5/15/2026 — data N/A",      debtSF:"—",          lender:"—",                         maturity:"—",                                comment:"Sold on 5/15/2026 — debt data unavailable.", photo:"https://ourlinks.colliers.com/Document/File?id=fCLmoGEg", lng:-112.014346044517,           lat:33.412448160077 },
+  { num:16, name:"Union – Building 1",                  address:"2046 Riverview Auto Dr", city:"Mesa",       submarket:"Mesa East",        rba:"239,411", leased:"42.7%", available:"5,729–137,209 SF",  maxContig:"113,170 SF", rent:"Withheld",         debt:"—",                              debtSF:"—",          lender:"—",                         maturity:"—",                                comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=eIS8I1o8", lng:-111.875809150165,           lat:33.4351720730946 }
+];
+
+
+// ── Build a lookup: property coordinate → property data ──
+// Used by the hover interaction to match a clicked/hovered building to a property.
+// Key = "lng,lat" rounded to 4dp; we also store by num for direct lookup.
+const propByNum = {};
+properties.forEach(p => { propByNum[p.num] = p; });
+
+function buildPopupHTML(p) {
+  const color = COLORS[p.submarket] || "#25408F";
+  const note  = p.comment ? `<div class="popup-comment">⚑ ${p.comment}</div>` : "";
+  const photo = p.photo ? `
+    <div class="popup-photo-wrap">
+      <img class="popup-photo" src="${p.photo}" alt="${p.name}" loading="lazy" onerror="this.closest('.popup-photo-wrap').style.display='none';">
+    </div>` : "";
+  return `<div>
+    <div class="popup-hdr" style="background:${color}">
+      <div class="popup-num-row"><span class="popup-num">#${p.num}</span><span class="popup-tag">${p.submarket}</span></div>
+      <div class="popup-name">${p.name}</div>
+      <div class="popup-addr">${p.address}, ${p.city}</div>
+    </div>
+    ${photo}
+    <div class="popup-body">
+      <div><div class="pf-label">Total RBA</div><div class="pf-val">${p.rba} SF</div></div>
+      <div><div class="pf-label">% Leased</div><div class="pf-val">${p.leased}</div></div>
+      <div><div class="pf-label">Available SF</div><div class="pf-val">${p.available}</div></div>
+      <div><div class="pf-label">Max Contiguous</div><div class="pf-val">${p.maxContig}</div></div>
+      <div><div class="pf-label">Asking Rent</div><div class="pf-val">${p.rent}</div></div>
+      <div><div class="pf-label">Loan Maturity</div><div class="pf-val">${p.maturity}</div></div>
+      <div><div class="pf-label">Debt Amount</div><div class="pf-val">${p.debt}</div></div>
+      <div><div class="pf-label">Debt / SF</div><div class="pf-val">${p.debtSF}</div></div>
+      <div class="pf-full"><div class="pf-label">Lender Type</div><div class="pf-val">${p.lender}</div></div>
+      ${note}
+    </div>
+  </div>`;
+}
+
+// ── State ──
+let currentSM      = "all";
+let currentBasemap = "standard";
+const markerObjects = [];
+let activeMarkerPopup = null;
+let activeMarkerNum = null;
+function closeActiveMarkerPopup() {
+  if (activeMarkerPopup) activeMarkerPopup.remove();
+  activeMarkerPopup = null;
+  activeMarkerNum = null;
+}
+
+// Stores selected building features so we can re-select after style reload
+// Map<propertyNum, featureset-feature-object>
+const selectedFeatures = new Map();
+
+const hoverPopup = new mapboxgl.Popup({
+  closeButton: false,
+  closeOnClick: false,
+  maxWidth: "390px",
+  offset: 18,
+  focusAfterOpen: false
+});
+
+// Popups intentionally do not use a fixed anchor.
+// This lets Mapbox choose top/bottom/left/right automatically so the card stays inside the visible map window.
+
+// ── Map — MUST use v3.24+ and pass config.basemap at init ──
+const map = new mapboxgl.Map({
+  container: "map",
+  style: "mapbox://styles/mapbox/standard",
+  center: [-112.010, 33.440],
+  zoom: 10.8,
+  pitch: 0,
+  bearing: 0,
+  antialias: true,
+  config: {
+    basemap: {
+      colorBuildingHighlight: "rgba(0,0,0,0)",  // transparent — highlight is invisible for non-property buildings
+      colorBuildingSelect:    "#FFD400",          // Colliers yellow for persistently selected property buildings
+      show3dLandmarks: false
+    }
+  }
+});
+
+map.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+// Close popups during camera movement so they do not appear to glitch or lag behind buildings.
+map.on("movestart", () => { hoverPopup.remove(); closeActiveMarkerPopup(); });
+map.on("dragstart", () => { hoverPopup.remove(); closeActiveMarkerPopup(); });
+map.on("zoomstart", () => { hoverPopup.remove(); closeActiveMarkerPopup(); });
+
+// ── addInteraction: registered once, survives style reloads ──
+let hoveredBuilding = null;
+let hoveredPropNum  = null; // tracks which property is currently shown — prevents popup glitch
+
+map.addInteraction("building-mouseenter", {
+  type: "mouseenter",
+  target: { featuresetId: "buildings", importId: "basemap" },
+  handler: ({ feature }) => {
+    const p = findPropertyForFeature(feature);
+
+    // Not one of our buildings — kill all effects and cancel the event
+    if (!p) {
+      if (hoveredBuilding) {
+        map.setFeatureState(hoveredBuilding, { highlight: false });
+        hoveredBuilding = null;
+        hoveredPropNum  = null;
+      }
+      map.setFeatureState(feature, { highlight: false, select: false });
+      map.getCanvas().style.cursor = "";
+      hoverPopup.remove();
+      return false; // cancels Mapbox's default mouseenter handling entirely
+    }
+
+    // Same building already showing — skip re-render to prevent glitch
+    if (hoveredPropNum === p.num) return;
+
+    // Clear previous
+    if (hoveredBuilding) map.setFeatureState(hoveredBuilding, { highlight: false });
+
+    hoveredBuilding = feature;
+    hoveredPropNum  = p.num;
+    map.setFeatureState(feature, { highlight: true });
+    map.getCanvas().style.cursor = "pointer";
+
+    hoverPopup
+      .setLngLat([p.lng, p.lat])
+      .setHTML(buildPopupHTML(p))
+      .addTo(map);
+  }
+});
+
+map.addInteraction("building-mouseleave", {
+  type: "mouseleave",
+  target: { featuresetId: "buildings", importId: "basemap" },
+  handler: ({ feature }) => {
+    // Only act if we're leaving the building that's currently highlighted
+    if (hoveredBuilding && feature.id === hoveredBuilding.id) {
+      map.setFeatureState(hoveredBuilding, { highlight: false });
+      hoveredBuilding = null;
+      hoveredPropNum  = null;
+      map.getCanvas().style.cursor = "";
+      hoverPopup.remove();
+    }
+    return false;
+  }
+});
+
+// ── Click: only allow select on property buildings; suppress everything else ──
+let selectedBuilding = null;
+
+map.addInteraction("building-click", {
+  type: "click",
+  target: { featuresetId: "buildings", importId: "basemap" },
+  handler: ({ feature }) => {
+    const p = findPropertyForFeature(feature);
+
+    // Not a property building — clear any accidental select and block
+    if (!p) {
+      map.setFeatureState(feature, { select: false, highlight: false });
+      return false; // cancels Mapbox's default click handling entirely
+    }
+
+    // It's a property building — re-assert select (keeps it yellow after click)
+    // and clear any previously click-selected non-property building
+    if (selectedBuilding && selectedBuilding.id !== feature.id) {
+      map.setFeatureState(selectedBuilding, { select: false });
+    }
+    selectedBuilding = feature;
+    map.setFeatureState(feature, { select: true });
+  }
+});
+
+// ── After the map is idle at zoom ≥ 14, query buildings featureset
+// at each property coordinate and setFeatureState select:true ──
+function selectPropertyBuildings() {
+  properties.forEach(p => {
+    const screenPt = map.project([p.lng, p.lat]);
+    const pad = 15; // px
+    const box = [
+      [screenPt.x - pad, screenPt.y - pad],
+      [screenPt.x + pad, screenPt.y + pad]
+    ];
+
+    // queryRenderedFeatures with featureset target — this is the correct API
+    // that returns featureset features with IDs compatible with setFeatureState
+    const hits = map.queryRenderedFeatures(box, {
+      target: { featuresetId: "buildings", importId: "basemap" }
+    });
+
+    if (!hits.length) return;
+
+    // Pick closest centroid to property coordinate
+    let best = null, bestDist = Infinity;
+    hits.forEach(f => {
+      const coords = f.geometry?.type === "Polygon"
+        ? f.geometry.coordinates[0]
+        : f.geometry?.type === "MultiPolygon"
+          ? f.geometry.coordinates[0][0] : null;
+      if (!coords) return;
+      const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+      const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+      const d  = Math.hypot(cx - p.lng, cy - p.lat);
+      if (d < bestDist) { bestDist = d; best = f; }
+    });
+
+    if (!best) return;
+
+    map.setFeatureState(best, { select: true });
+    selectedFeatures.set(p.num, best);
+  });
+}
+
+// ── Find which property a hovered building feature belongs to ──
+// Only match by exact feature ID — no loose proximity fallback
+function findPropertyForFeature(feature) {
+  for (const [num, sf] of selectedFeatures) {
+    if (sf.id === feature.id) return propByNum[num];
+  }
+  return null; // not one of our buildings
+}
+
+// ── style.load: configure basemap + place markers ──
+map.on("style.load", () => {
+  if (currentBasemap === "standard") {
+    map.setConfigProperty("basemap", "lightPreset",            "day");
+    map.setConfigProperty("basemap", "show3dObjects",          true);
+    map.setConfigProperty("basemap", "show3dBuildings",        true);
+    map.setConfigProperty("basemap", "show3dTrees",            true);
+    map.setConfigProperty("basemap", "show3dLandmarks",        false); // MUST stay false
+    map.setConfigProperty("basemap", "show3dFacades",          true);
+    map.setConfigProperty("basemap", "showLandmarkIcons",      true);
+    map.setConfigProperty("basemap", "colorBuildingHighlight", "rgba(0,0,0,0)");
+    map.setConfigProperty("basemap", "colorBuildingSelect",    "#ACBBE8");
+  }
+
+  // Re-place markers: remove old ones first so style reloads do not duplicate pins/popups
+  markerObjects.forEach(({ marker }) => marker.remove());
+  markerObjects.length = 0;
+  closeActiveMarkerPopup();
+  properties.forEach(p => {
+    const color = COLORS[p.submarket] || "#25408F";
+    const el = document.createElement("div");
+    el.className = "marker-pin";
+    el.style.background = color;
+    el.textContent = p.num;
+    el.dataset.sm = p.submarket;
+
+    // Hover-only marker popup: no click-to-pin behavior.
+    // This prevents Tempe popups from staying open or stacking.
+    el.addEventListener("mouseenter", () => {
+      map.getCanvas().style.cursor = "pointer";
+
+      if (activeMarkerNum === p.num) return;
+      hoverPopup.remove();
+      closeActiveMarkerPopup();
+
+      activeMarkerNum = p.num;
+      activeMarkerPopup = new mapboxgl.Popup({
+        // No fixed anchor: Mapbox auto-positions the popup so it stays inside the map window.
+        offset: 18,
+        closeButton: false,
+        closeOnClick: false,
+        maxWidth: "390px",
+        focusAfterOpen: false
+      })
+        .setLngLat([p.lng, p.lat])
+        .setHTML(buildPopupHTML(p))
+        .addTo(map);
+    });
+
+    el.addEventListener("mouseleave", () => {
+      map.getCanvas().style.cursor = "";
+      closeActiveMarkerPopup();
+    });
+
+    el.addEventListener("click", e => {
+      // Disable click-to-pin. Popups are hover-only.
+      e.stopPropagation();
+      e.preventDefault();
+      closeActiveMarkerPopup();
+    });
+
+    const marker = new mapboxgl.Marker({ element:el, anchor:"center", offset:[0,0] })
+      .setLngLat([p.lng, p.lat]).addTo(map);
+    markerObjects.push({ marker, el, submarket: p.submarket });
+  });
+
+  applyMarkerVisibility(currentSM);
+
+  // Build UI once
+  if (!window._uiBuilt) {
+    window._uiBuilt = true;
+    const bar = document.getElementById("filterBar");
+    Object.entries(COLORS).forEach(([name, color]) => {
+      const cnt = properties.filter(p => p.submarket === name).length;
+      const btn = document.createElement("button");
+      btn.className = "filter-btn"; btn.dataset.sm = name;
+      btn.innerHTML = `<span class="dot" style="background:${color}"></span>${name} <span class="cnt">(${cnt})</span>`;
+      btn.onclick = () => filterSubmarket(name);
+      bar.appendChild(btn);
+    });
+    const leg = document.getElementById("legend");
+    Object.entries(COLORS).forEach(([name, color]) => {
+      const cnt = properties.filter(p => p.submarket === name).length;
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      item.innerHTML = `<div class="legend-dot" style="background:${color}"></div>${name}<span class="legend-cnt">${cnt}</span>`;
+      leg.appendChild(item);
+    });
+  }
+
+  // Wait for tiles then select buildings
+  selectedFeatures.clear();
+  map.once("idle", () => selectPropertyBuildings());
+});
+
+// Re-select buildings whenever the camera settles at zoom ≥ 14 (new tiles in view)
+map.on("idle", () => {
+  if (map.getZoom() >= 14) selectPropertyBuildings();
+});
+
+function applyMarkerVisibility(sm) {
+  markerObjects.forEach(({ el, submarket }) => {
+    const v = sm === "all" || submarket === sm;
+    el.style.opacity       = v ? "1" : "0.15";
+    el.style.pointerEvents = v ? "auto" : "none";
+  });
+}
+
+document.querySelector('[data-sm="all"]').onclick = () => filterSubmarket("all");
+
+function filterSubmarket(sm) {
+  currentSM = sm;
+  document.querySelectorAll(".filter-btn").forEach(b => {
+    b.classList.remove("active");
+    b.style.background=""; b.style.color=""; b.style.borderColor="";
+    if (b.dataset.sm === sm) {
+      b.classList.add("active");
+      const c = sm==="all" ? "#25408F" : COLORS[sm];
+      b.style.background=c; b.style.color="#fff"; b.style.borderColor=c;
+    }
+  });
+  applyMarkerVisibility(sm);
+  hoverPopup.remove();
+  closeActiveMarkerPopup();
+  const v = VIEWS[sm] || VIEWS["all"];
+  map.flyTo({ center:v.center, zoom:v.zoom, pitch:v.pitch, bearing:v.bearing, duration:1500, essential:true });
+}
+
+function setLight(preset) {
+  map.setConfigProperty("basemap", "lightPreset", preset);
+  document.querySelectorAll(".lbtn").forEach(b =>
+    b.classList.toggle("active", b.dataset.preset === preset)
+  );
+}
+
+function setBasemap(style) {
+  if (currentBasemap === style) return;
+  currentBasemap = style;
+  document.getElementById("btn-standard").classList.toggle("active", style==="standard");
+  document.getElementById("btn-satellite").classList.toggle("active", style==="satellite");
+
+  const center=map.getCenter(), zoom=map.getZoom(), bearing=map.getBearing();
+  const pitch = style === "satellite" ? 0 : map.getPitch();
+
+
+  if (style === "satellite") {
+    map.setPitch(0);
+    map.setMaxPitch(0);
+  } else {
+    map.setMaxPitch(85);
+  }
+    
+  map.setStyle(style==="standard"
+    ? "mapbox://styles/mapbox/standard"
+    : "mapbox://styles/mapbox/satellite-streets-v12");
+
+  map.once("style.load", () => map.jumpTo({ center, zoom, pitch, bearing }));
+}
+</script>
+</body>
+</html>
