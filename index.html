@@ -50,36 +50,83 @@
 
   #map { flex:1; width:100%; position:relative; }
 
-  #legend {
-    position:absolute; bottom:32px; left:28px; z-index:100;
-    background:rgba(255,255,255,0.95); border:1px solid #dde4f0;
-    border-left:3px solid var(--c-colliers-blue); border-radius:4px;
-    padding:13px 17px; min-width:172px; box-shadow:0 2px 14px rgba(0,7,89,0.13);
+  /* ── Fixed info panel — top left ── */
+  #info-panel {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 200;
+    width: min(300px, calc(100vw - 32px));
+    max-height: calc(100% - 32px);
+    background: rgba(255,255,255,0.98);
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0,7,89,0.22);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
   }
-  .legend-title { font-size:9px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--c-colliers-blue); margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid #dde4f0; }
-  .legend-item { display:flex; align-items:center; gap:9px; margin-bottom:7px; font-size:12px; color:var(--c-deep-blue-grey); }
-  .legend-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; border:2px solid rgba(0,0,0,0.08); }
-  .legend-cnt { margin-left:auto; font-size:10px; color:var(--c-dark-blue-grey); opacity:0.7; }
+  #info-panel.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
 
-  .marker-pin {
-    width:36px; height:36px; border-radius:50%; border:3px solid rgba(255,255,255,0.95);
-    display:flex; align-items:center; justify-content:center;
-    font-family:"Open Sans",sans-serif; font-size:13px; font-weight:700; color:#fff;
-    box-shadow:0 3px 14px rgba(0,0,0,0.35); cursor:pointer;
-    transition:box-shadow 0.15s; user-select:none;
+  /* Close button */
+  #info-panel-close {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; line-height: 1;
+    z-index: 10;
+    transition: background 0.15s;
   }
-  .marker-pin:hover { box-shadow:0 5px 20px rgba(0,0,0,0.5); }
+  #info-panel-close:hover { background: rgba(255,255,255,0.4); }
 
-  .mapboxgl-popup { z-index:150; pointer-events:auto; max-width:calc(100vw - 32px) !important; }
-  .mapboxgl-popup-content { animation: popupFadeIn 0.14s ease-out; }
-  @keyframes popupFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-  .mapboxgl-popup-content {
-    padding:0 !important; border-radius:5px !important; overflow:hidden;
-    box-shadow:0 6px 28px rgba(0,7,89,0.25) !important;
-    width:min(390px, calc(100vw - 32px)); max-width:calc(100vw - 32px); max-height:calc(100vh - 150px); overflow-y:auto; font-family:"Open Sans",sans-serif;
+  /* Placeholder shown when panel is closed */
+  #info-placeholder {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 99;
+    width: min(300px, calc(100vw - 32px));
+    background: rgba(255,255,255,0.88);
+    border-radius: 6px;
+    border: 1.5px dashed #dde4f0;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: opacity 0.18s ease;
   }
-  .mapboxgl-popup-tip { display:none !important; }
-  .mapboxgl-popup-close-button { color:rgba(255,255,255,0.85) !important; font-size:18px !important; padding:6px 10px !important; z-index:10; line-height:1; }
+  #info-placeholder.hidden { opacity: 0; pointer-events: none; }
+  .placeholder-icon {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--c-pale-blue);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .placeholder-icon svg { width:16px; height:16px; fill:var(--c-colliers-blue); }
+  .placeholder-text { font-size: 11px; color: var(--c-dark-blue-grey); line-height: 1.5; }
+  .placeholder-text strong { color: var(--c-colliers-blue); display:block; font-size:11.5px; margin-bottom:2px; }
+
+  /* Scrollable content — always interactive so scroll works */
+  #info-panel-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    flex: 1;
+    pointer-events: auto;
+  }
+
   .popup-hdr { padding:13px 17px 11px; }
   .popup-num-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
   .popup-num { font-size:10px; font-weight:700; letter-spacing:0.1em; color:rgba(255,255,255,0.75); }
@@ -87,33 +134,29 @@
   .popup-name { font-size:15px; font-weight:700; color:#fff; line-height:1.25; }
   .popup-addr { font-size:11px; color:rgba(255,255,255,0.72); margin-top:3px; }
 
-  .popup-photo-wrap {
-    background:#fff;
-    padding:10px 10px 0;
-  }
+  .popup-photo-wrap { background:#fff; padding:10px 10px 0; }
   .popup-photo {
-    width:100%;
-    aspect-ratio: 16 / 9;
-    display:block;
-    object-fit:cover;
-    border-radius:5px;
-    background:#eef2f7;
-    box-shadow:0 1px 6px rgba(0,7,89,0.12);
-  }
-  .popup-photo-caption {
-    font-size:8.5px;
-    color:#56648F;
-    opacity:0.7;
-    margin-top:4px;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
+    width:100%; aspect-ratio:16/9; display:block; object-fit:cover;
+    border-radius:5px; background:#eef2f7; box-shadow:0 1px 6px rgba(0,7,89,0.12);
   }
 
   .popup-body { padding:11px 17px 13px; display:grid; grid-template-columns:1fr 1fr; gap:8px 15px; background:#fff; }
   .pf-label { font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#56648F; opacity:0.75; margin-bottom:2px; }
-  .pf-val { font-size:12px; color:#000759; line-height:1.3; }
+  .pf-val { font-size:12px; color:#000759; line-height:1.3; word-break:break-word; }
   .pf-full { grid-column:1/-1; }
   .popup-comment { grid-column:1/-1; background:#f5f7fc; border-left:3px solid #25408F; padding:6px 10px; border-radius:0 3px 3px 0; font-size:11px; color:#56648F; font-style:italic; margin-top:2px; }
+
+  /* Suppress all Mapbox popup rendering — we use the fixed panel instead */
+  .mapboxgl-popup { display: none !important; }
+
+  .marker-pin {
+    width:36px; height:36px; border-radius:50%; border:3px solid rgba(255,255,255,0.95);
+    display:flex; align-items:center; justify-content:center;
+    font-family:"Open Sans",sans-serif; font-size:13px; font-weight:700; color:#fff;
+    box-shadow:0 3px 14px rgba(0,0,0,0.35); cursor:pointer;
+    user-select:none;
+  }
+  .marker-pin:hover, .marker-pin.active { box-shadow:0 3px 14px rgba(0,0,0,0.35); }
 
   .mapboxgl-ctrl-group { box-shadow:0 1px 6px rgba(0,7,89,0.15) !important; border-radius:3px !important; }
   .mapboxgl-ctrl-attrib { display:none !important; }
@@ -166,7 +209,24 @@
 </div>
 
 <div id="map">
-  <div id="legend"><div class="legend-title">Submarket</div></div>
+
+  <!-- Fixed info panel (top-left) -->
+  <div id="info-placeholder">
+    <div class="placeholder-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+    </div>
+    <div class="placeholder-text">
+      Click a building to show details
+    </div>
+  </div>
+
+  <div id="info-panel">
+    <button id="info-panel-close" onclick="hideInfoPanel()" title="Close">&#x2715;</button>
+    <div id="info-panel-scroll">
+      <div id="info-panel-content"></div>
+    </div>
+  </div>
+
   <div id="light-toggle">
     <button class="lbtn active" data-preset="day"   onclick="setLight('day')">Day</button>
     <button class="lbtn"        data-preset="dawn"  onclick="setLight('dawn')">Dawn</button>
@@ -206,7 +266,6 @@ const VIEWS = {
   "Mesa East":        { center:[-111.875809150165, 33.4351720730946], zoom:16.5, pitch:50, bearing:0   }
 };
 
-
 const properties = [
   { num:1,  name:"Bank of America Tower",               address:"201 E Washington St",    city:"Phoenix",    submarket:"Downtown",         rba:"612,239", leased:"62.4%", available:"40–276,146 SF",     maxContig:"97,133 SF",  rent:"$37.00 FS",        debt:"—",                              debtSF:"—",          lender:"—",                         maturity:"—",                                comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=BEXNDvi7",                                              lng:-112.070586603168,           lat:33.447713550854 },
   { num:2,  name:"One North Central",                   address:"1 N Central Ave",        city:"Phoenix",    submarket:"Downtown",         rba:"436,433", leased:"78.8%", available:"1,320–157,983 SF",  maxContig:"129,466 SF", rent:"$35.00 FS",        debt:"$90,500,000",                    debtSF:"$207.36/SF", lender:"Prime Group",               maturity:"Est. 8/2026",                      comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=BwLvOShs",                                              lng:-112.073206702281,           lat:33.448699472215 },
@@ -226,21 +285,28 @@ const properties = [
   { num:16, name:"Union – Building 1",                  address:"2046 Riverview Auto Dr", city:"Mesa",       submarket:"Mesa East",        rba:"239,411", leased:"42.7%", available:"5,729–137,209 SF",  maxContig:"113,170 SF", rent:"Withheld",         debt:"—",                              debtSF:"—",          lender:"—",                         maturity:"—",                                comment:null, photo:"https://ourlinks.colliers.com/Document/File?id=eIS8I1o8", lng:-111.875809150165,           lat:33.4351720730946 }
 ];
 
-
-// ── Build a lookup: property coordinate → property data ──
-// Used by the hover interaction to match a clicked/hovered building to a property.
-// Key = "lng,lat" rounded to 4dp; we also store by num for direct lookup.
 const propByNum = {};
 properties.forEach(p => { propByNum[p.num] = p; });
 
-function buildPopupHTML(p) {
+// ── Fixed info panel helpers ──
+const infoPanel        = document.getElementById("info-panel");
+const infoPanelContent = document.getElementById("info-panel-content");
+const infoPlaceholder  = document.getElementById("info-placeholder");
+
+let pinnedNum = null; // which property is currently pinned open
+
+function showInfoPanel(p) {
+  if (pinnedNum === p.num) return; // clicking same pin again — leave it open
+  pinnedNum = p.num;
+
   const color = COLORS[p.submarket] || "#25408F";
   const note  = p.comment ? `<div class="popup-comment">⚑ ${p.comment}</div>` : "";
   const photo = p.photo ? `
     <div class="popup-photo-wrap">
       <img class="popup-photo" src="${p.photo}" alt="${p.name}" loading="lazy" onerror="this.closest('.popup-photo-wrap').style.display='none';">
     </div>` : "";
-  return `<div>
+
+  document.getElementById("info-panel-content").innerHTML = `
     <div class="popup-hdr" style="background:${color}">
       <div class="popup-num-row"><span class="popup-num">#${p.num}</span><span class="popup-tag">${p.submarket}</span></div>
       <div class="popup-name">${p.name}</div>
@@ -258,38 +324,31 @@ function buildPopupHTML(p) {
       <div><div class="pf-label">Debt / SF</div><div class="pf-val">${p.debtSF}</div></div>
       <div class="pf-full"><div class="pf-label">Lender Type</div><div class="pf-val">${p.lender}</div></div>
       ${note}
-    </div>
-  </div>`;
+    </div>`;
+
+  infoPanel.classList.add("visible");
+  infoPlaceholder.classList.add("hidden");
+  document.getElementById("info-panel-scroll").scrollTop = 0;
+}
+
+function hideInfoPanel() {
+  pinnedNum = null;
+  infoPanel.classList.remove("visible");
+  infoPlaceholder.classList.remove("hidden");
 }
 
 // ── State ──
 let currentSM      = "all";
 let currentBasemap = "standard";
 const markerObjects = [];
-let activeMarkerPopup = null;
 let activeMarkerNum = null;
-function closeActiveMarkerPopup() {
-  if (activeMarkerPopup) activeMarkerPopup.remove();
-  activeMarkerPopup = null;
-  activeMarkerNum = null;
-}
 
-// Stores selected building features so we can re-select after style reload
-// Map<propertyNum, featureset-feature-object>
 const selectedFeatures = new Map();
 
-const hoverPopup = new mapboxgl.Popup({
-  closeButton: false,
-  closeOnClick: false,
-  maxWidth: "390px",
-  offset: 18,
-  focusAfterOpen: false
-});
+// We still create a hoverPopup object so the Mapbox interaction API doesn't error,
+// but we suppress it with CSS (.mapboxgl-popup { display:none })
+const hoverPopup = new mapboxgl.Popup({ closeButton:false, closeOnClick:false, focusAfterOpen:false });
 
-// Popups intentionally do not use a fixed anchor.
-// This lets Mapbox choose top/bottom/left/right automatically so the card stays inside the visible map window.
-
-// ── Map — MUST use v3.24+ and pass config.basemap at init ──
 const map = new mapboxgl.Map({
   container: "map",
   style: "mapbox://styles/mapbox/standard",
@@ -300,8 +359,8 @@ const map = new mapboxgl.Map({
   antialias: true,
   config: {
     basemap: {
-      colorBuildingHighlight: "rgba(0,0,0,0)",  // transparent — highlight is invisible for non-property buildings
-      colorBuildingSelect:    "#FFD400",          // Colliers yellow for persistently selected property buildings
+      colorBuildingHighlight: "rgba(0,0,0,0)",
+      colorBuildingSelect:    "#FFD400",
       show3dLandmarks: false
     }
   }
@@ -309,49 +368,27 @@ const map = new mapboxgl.Map({
 
 map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-// Close popups during camera movement so they do not appear to glitch or lag behind buildings.
-map.on("movestart", () => { hoverPopup.remove(); closeActiveMarkerPopup(); });
-map.on("dragstart", () => { hoverPopup.remove(); closeActiveMarkerPopup(); });
-map.on("zoomstart", () => { hoverPopup.remove(); closeActiveMarkerPopup(); });
+map.on("movestart", () => { hoverPopup.remove(); });
+map.on("dragstart", () => { hoverPopup.remove(); });
+map.on("zoomstart", () => { hoverPopup.remove(); });
 
-// ── addInteraction: registered once, survives style reloads ──
 let hoveredBuilding = null;
-let hoveredPropNum  = null; // tracks which property is currently shown — prevents popup glitch
+let hoveredPropNum  = null;
 
 map.addInteraction("building-mouseenter", {
   type: "mouseenter",
   target: { featuresetId: "buildings", importId: "basemap" },
   handler: ({ feature }) => {
     const p = findPropertyForFeature(feature);
-
-    // Not one of our buildings — kill all effects and cancel the event
     if (!p) {
-      if (hoveredBuilding) {
-        map.setFeatureState(hoveredBuilding, { highlight: false });
-        hoveredBuilding = null;
-        hoveredPropNum  = null;
-      }
-      map.setFeatureState(feature, { highlight: false, select: false });
       map.getCanvas().style.cursor = "";
-      hoverPopup.remove();
-      return false; // cancels Mapbox's default mouseenter handling entirely
+      return false;
     }
-
-    // Same building already showing — skip re-render to prevent glitch
-    if (hoveredPropNum === p.num) return;
-
-    // Clear previous
     if (hoveredBuilding) map.setFeatureState(hoveredBuilding, { highlight: false });
-
     hoveredBuilding = feature;
     hoveredPropNum  = p.num;
     map.setFeatureState(feature, { highlight: true });
     map.getCanvas().style.cursor = "pointer";
-
-    hoverPopup
-      .setLngLat([p.lng, p.lat])
-      .setHTML(buildPopupHTML(p))
-      .addTo(map);
   }
 });
 
@@ -359,19 +396,16 @@ map.addInteraction("building-mouseleave", {
   type: "mouseleave",
   target: { featuresetId: "buildings", importId: "basemap" },
   handler: ({ feature }) => {
-    // Only act if we're leaving the building that's currently highlighted
     if (hoveredBuilding && feature.id === hoveredBuilding.id) {
       map.setFeatureState(hoveredBuilding, { highlight: false });
       hoveredBuilding = null;
       hoveredPropNum  = null;
       map.getCanvas().style.cursor = "";
-      hoverPopup.remove();
     }
     return false;
   }
 });
 
-// ── Click: only allow select on property buildings; suppress everything else ──
 let selectedBuilding = null;
 
 map.addInteraction("building-click", {
@@ -379,43 +413,37 @@ map.addInteraction("building-click", {
   target: { featuresetId: "buildings", importId: "basemap" },
   handler: ({ feature }) => {
     const p = findPropertyForFeature(feature);
-
-    // Not a property building — clear any accidental select and block
     if (!p) {
       map.setFeatureState(feature, { select: false, highlight: false });
-      return false; // cancels Mapbox's default click handling entirely
+      return false;
     }
-
-    // It's a property building — re-assert select (keeps it yellow after click)
-    // and clear any previously click-selected non-property building
     if (selectedBuilding && selectedBuilding.id !== feature.id) {
       map.setFeatureState(selectedBuilding, { select: false });
     }
     selectedBuilding = feature;
     map.setFeatureState(feature, { select: true });
+    // Toggle: same building click closes, new building click opens
+    if (pinnedNum === p.num) {
+      hideInfoPanel();
+    } else {
+      document.querySelectorAll(".marker-pin").forEach(m => m.classList.remove("active"));
+      showInfoPanel(p);
+    }
   }
 });
 
-// ── After the map is idle at zoom ≥ 14, query buildings featureset
-// at each property coordinate and setFeatureState select:true ──
 function selectPropertyBuildings() {
   properties.forEach(p => {
     const screenPt = map.project([p.lng, p.lat]);
-    const pad = 15; // px
+    const pad = 15;
     const box = [
       [screenPt.x - pad, screenPt.y - pad],
       [screenPt.x + pad, screenPt.y + pad]
     ];
-
-    // queryRenderedFeatures with featureset target — this is the correct API
-    // that returns featureset features with IDs compatible with setFeatureState
     const hits = map.queryRenderedFeatures(box, {
       target: { featuresetId: "buildings", importId: "basemap" }
     });
-
     if (!hits.length) return;
-
-    // Pick closest centroid to property coordinate
     let best = null, bestDist = Infinity;
     hits.forEach(f => {
       const coords = f.geometry?.type === "Polygon"
@@ -428,41 +456,36 @@ function selectPropertyBuildings() {
       const d  = Math.hypot(cx - p.lng, cy - p.lat);
       if (d < bestDist) { bestDist = d; best = f; }
     });
-
     if (!best) return;
-
     map.setFeatureState(best, { select: true });
     selectedFeatures.set(p.num, best);
   });
 }
 
-// ── Find which property a hovered building feature belongs to ──
-// Only match by exact feature ID — no loose proximity fallback
 function findPropertyForFeature(feature) {
   for (const [num, sf] of selectedFeatures) {
     if (sf.id === feature.id) return propByNum[num];
   }
-  return null; // not one of our buildings
+  return null;
 }
 
-// ── style.load: configure basemap + place markers ──
 map.on("style.load", () => {
   if (currentBasemap === "standard") {
     map.setConfigProperty("basemap", "lightPreset",            "day");
     map.setConfigProperty("basemap", "show3dObjects",          true);
     map.setConfigProperty("basemap", "show3dBuildings",        true);
     map.setConfigProperty("basemap", "show3dTrees",            true);
-    map.setConfigProperty("basemap", "show3dLandmarks",        false); // MUST stay false
+    map.setConfigProperty("basemap", "show3dLandmarks",        false);
     map.setConfigProperty("basemap", "show3dFacades",          true);
     map.setConfigProperty("basemap", "showLandmarkIcons",      true);
     map.setConfigProperty("basemap", "colorBuildingHighlight", "rgba(0,0,0,0)");
     map.setConfigProperty("basemap", "colorBuildingSelect",    "#ACBBE8");
   }
 
-  // Re-place markers: remove old ones first so style reloads do not duplicate pins/popups
   markerObjects.forEach(({ marker }) => marker.remove());
   markerObjects.length = 0;
-  closeActiveMarkerPopup();
+  activeMarkerNum = null;
+
   properties.forEach(p => {
     const color = COLORS[p.submarket] || "#25408F";
     const el = document.createElement("div");
@@ -471,39 +494,26 @@ map.on("style.load", () => {
     el.textContent = p.num;
     el.dataset.sm = p.submarket;
 
-    // Hover-only marker popup: no click-to-pin behavior.
-    // This prevents Tempe popups from staying open or stacking.
     el.addEventListener("mouseenter", () => {
       map.getCanvas().style.cursor = "pointer";
-
-      if (activeMarkerNum === p.num) return;
-      hoverPopup.remove();
-      closeActiveMarkerPopup();
-
-      activeMarkerNum = p.num;
-      activeMarkerPopup = new mapboxgl.Popup({
-        // No fixed anchor: Mapbox auto-positions the popup so it stays inside the map window.
-        offset: 18,
-        closeButton: false,
-        closeOnClick: false,
-        maxWidth: "390px",
-        focusAfterOpen: false
-      })
-        .setLngLat([p.lng, p.lat])
-        .setHTML(buildPopupHTML(p))
-        .addTo(map);
     });
 
     el.addEventListener("mouseleave", () => {
       map.getCanvas().style.cursor = "";
-      closeActiveMarkerPopup();
     });
 
     el.addEventListener("click", e => {
-      // Disable click-to-pin. Popups are hover-only.
       e.stopPropagation();
       e.preventDefault();
-      closeActiveMarkerPopup();
+      // Toggle: clicking the same pin closes it, clicking a new one opens it
+      if (pinnedNum === p.num) {
+        hideInfoPanel();
+        document.querySelectorAll(".marker-pin").forEach(m => m.classList.remove("active"));
+      } else {
+        document.querySelectorAll(".marker-pin").forEach(m => m.classList.remove("active"));
+        el.classList.add("active");
+        showInfoPanel(p);
+      }
     });
 
     const marker = new mapboxgl.Marker({ element:el, anchor:"center", offset:[0,0] })
@@ -513,7 +523,6 @@ map.on("style.load", () => {
 
   applyMarkerVisibility(currentSM);
 
-  // Build UI once
   if (!window._uiBuilt) {
     window._uiBuilt = true;
     const bar = document.getElementById("filterBar");
@@ -525,22 +534,13 @@ map.on("style.load", () => {
       btn.onclick = () => filterSubmarket(name);
       bar.appendChild(btn);
     });
-    const leg = document.getElementById("legend");
-    Object.entries(COLORS).forEach(([name, color]) => {
-      const cnt = properties.filter(p => p.submarket === name).length;
-      const item = document.createElement("div");
-      item.className = "legend-item";
-      item.innerHTML = `<div class="legend-dot" style="background:${color}"></div>${name}<span class="legend-cnt">${cnt}</span>`;
-      leg.appendChild(item);
-    });
+    // Legend intentionally omitted
   }
 
-  // Wait for tiles then select buildings
   selectedFeatures.clear();
   map.once("idle", () => selectPropertyBuildings());
 });
 
-// Re-select buildings whenever the camera settles at zoom ≥ 14 (new tiles in view)
 map.on("idle", () => {
   if (map.getZoom() >= 14) selectPropertyBuildings();
 });
@@ -568,7 +568,6 @@ function filterSubmarket(sm) {
   });
   applyMarkerVisibility(sm);
   hoverPopup.remove();
-  closeActiveMarkerPopup();
   const v = VIEWS[sm] || VIEWS["all"];
   map.flyTo({ center:v.center, zoom:v.zoom, pitch:v.pitch, bearing:v.bearing, duration:1500, essential:true });
 }
@@ -589,14 +588,13 @@ function setBasemap(style) {
   const center=map.getCenter(), zoom=map.getZoom(), bearing=map.getBearing();
   const pitch = style === "satellite" ? 0 : map.getPitch();
 
-
   if (style === "satellite") {
     map.setPitch(0);
     map.setMaxPitch(0);
   } else {
     map.setMaxPitch(85);
   }
-    
+
   map.setStyle(style==="standard"
     ? "mapbox://styles/mapbox/standard"
     : "mapbox://styles/mapbox/satellite-streets-v12");
